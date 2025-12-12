@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+
+contract VLTXToken is ERC20, AccessControl {
+    uint256 public constant MAX_SUPPLY = 100_000_000 * 10**18;
+
+    bytes32 public constant ADMIN_ROLE  = keccak256("ADMIN_ROLE");
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+
+    constructor(address admin, uint256 initialMint) ERC20("VLTX Token", "VLTX") {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(ADMIN_ROLE, admin);
+
+        if (initialMint > 0) {
+            require(initialMint <= MAX_SUPPLY, "Initial mint exceeds max supply");
+            _mint(admin, initialMint);
+        }
+    }
+
+    function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
+        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
+        _mint(to, amount);
+    }
+
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
+    }
+
+    function burnFrom(address account, uint256 amount) external onlyRole(BURNER_ROLE) {
+        uint256 currentAllowance = allowance(account, msg.sender);
+        require(currentAllowance >= amount, "Insufficient allowance");
+        _approve(account, msg.sender, currentAllowance - amount);
+        _burn(account, amount);
+    }
+
+    function grantMinter(address account) external onlyRole(ADMIN_ROLE) {
+        _grantRole(MINTER_ROLE, account);
+    }
+
+    function revokeMinter(address account) external onlyRole(ADMIN_ROLE) {
+        _revokeRole(MINTER_ROLE, account);
+    }
+
+    function grantBurner(address account) external onlyRole(ADMIN_ROLE) {
+        _grantRole(BURNER_ROLE, account);
+    }
+
+    function revokeBurner(address account) external onlyRole(ADMIN_ROLE) {
+        _revokeRole(BURNER_ROLE, account);
+    }
+}
